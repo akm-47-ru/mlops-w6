@@ -1,0 +1,107 @@
+name: ML Pipeline CI/CD
+
+on:
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GKE_CLUSTER_NAME: ${{ secrets.GKE_CLUSTER_NAME }}
+  GKE_ZONE: ${{ secrets.GKE_ZONE }}
+  ARTIFACT_REGISTRY_LOCATION: ${{ secrets.ARTIFACT_REGISTRY_LOCATION }} 
+  ARTIFACT_REGISTRY_REPO: ${{ secrets.ARTIFACT_REGISTRY_REPO }}
+  IMAGE_NAME: iris-classifier
+
+jobs:
+  Build-and-Deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'write'
+      id-token: 'write'
+
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Authenticate to Google Cloud
+      uses: 'google-github-actions/auth@v2'
+      with:
+        credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+    - name: Set up Cloud SDK
+      uses: 'google-github-actions/setup-gcloud@v2'
+
+    - name: Install gke-gcloud-auth-plugin
+      run: gcloud components install gke-gcloud-auth-plugin --quiet
+    
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip -q
+        pip install -r requirements.txt -q
+        
+    - name: Running train.py
+      run: |
+        python train.py
+
+    - name: Configure Docker
+      run: gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev --quiet
+
+    - name: Build and Push Docker image
+      id: build-image
+      run: |
+        IMAGE_NAME="${{ env.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/iris-classifier:${{ github.sha }}"
+        docker build -t $IMAGE_NAME .
+        docker push $IMAGE_NAME
+        echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_OUTPUT
+
+    - name: Deploy to GKE
+      run: |
+        gcloud container clusters get-credentials $GKE_CLUSTER_NAME --zone $GKE_ZONE
+        sed -i "s|DOCKER_IMAGE_PLACEHOLDER|${{ steps.build-image.outputs.IMAGE_NAME }}|g" kube/deployment.yaml
+        kubectl apply -f kube/deployment.yaml
+        kubectl apply -f kube/service.yaml
+        kubectl rollout status deployment/iris-classifier-deployment --timeout=300s
+    
+    - name: Generate CML Report
+      env:
+        REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # Wait for the Load Balancer to provision an external IP
+        echo "Waiting for external IP..."
+        SERVICE_IP=""
+        for i in {1..30}; do
+          SERVICE_IP=$(kubectl get service iris-classifier-service --output=jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
+          if [ -n "$SERVICE_IP" ]; then
+            echo "External IP found: $SERVICE_IP"
+            break
+          fi
+          echo "Still waiting..."
+          sleep 10
+        done
+
+        if [ -z "$SERVICE_IP" ]; then
+          echo "Error: Timed out waiting for external IP."
+          exit 1
+        fi
+
+        # Generate report
+        echo "🚀 Deployment to dev successful!" > report.md
+        echo "✅ Model API is available at: http://$SERVICE_IP" >> report.md
+        echo "### Example Usage:" >> report.md
+        echo "\`\`\`bash" >> report.md
+        echo "curl -X 'POST' 'http://$SERVICE_IP/predict' \\" >> report.md
+        echo "  -H 'accept: application/json' -H 'Content-Type: application/json' \\" >> report.md
+        echo "  -d '{\"sepal_length\": 5.1, \"sepal_width\": 3.5, \"petal_length\": 1.4, \"petal_width\": 0.2}'" >> report.md
+        echo "\`\`\`" >> report.md
+        
+        # Publish report as comment
+        npm install -g @dvcorg/cml
+        cml comment create report.md

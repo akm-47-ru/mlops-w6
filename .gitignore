@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+
+# Virtual Environment
+.venv/
+venv/
+env/
+*.env
+
+**/__init__.py
+
+# Folders
+artifacts/
+data/
+metrics.txt
+
+# IDE and OS specific files
+.vscode/
+.idea/
+.DS_Store
+*.swo
+*.swp
+
+# Jupyter Notebook Checkpoints
+.ipynb_checkpoints/
+
+# Docker
+docker-compose.yml.override
