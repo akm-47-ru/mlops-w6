@@ -15,7 +15,6 @@ env:
   GKE_ZONE: ${{ secrets.GKE_ZONE }}
   ARTIFACT_REGISTRY_LOCATION: ${{ secrets.ARTIFACT_REGISTRY_LOCATION }} 
   ARTIFACT_REGISTRY_REPO: ${{ secrets.ARTIFACT_REGISTRY_REPO }}
-  IMAGE_NAME: iris-classifier
 
 jobs:
   Build-and-Deploy:
