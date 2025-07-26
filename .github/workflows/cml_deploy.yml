@@ -65,7 +65,7 @@ jobs:
       run: |
         gcloud container clusters get-credentials $GKE_CLUSTER_NAME --zone $GKE_ZONE
         sed -i "s|DOCKER_IMAGE_PLACEHOLDER|${{ steps.build-image.outputs.IMAGE_NAME }}|g" kube/deployment.yaml
-        kubectl apply -f kube/deployment.yaml
+        kubectl apply -f kube/deploy.yaml
         kubectl apply -f kube/service.yaml
         kubectl rollout status deployment/iris-classifier-deployment --timeout=300s
     
