@@ -64,9 +64,9 @@ jobs:
     - name: Deploy to GKE
       run: |
         gcloud container clusters get-credentials $GKE_CLUSTER_NAME --zone $GKE_ZONE
-        sed -i "s|DOCKER_IMAGE_PLACEHOLDER|${{ steps.build-image.outputs.IMAGE_NAME }}|g" kube/deploy.yaml
-        kubectl apply -f kube/deploy.yaml
-        kubectl apply -f kube/service.yaml
+        sed -i "s|DOCKER_IMAGE_PLACEHOLDER|${{ steps.build-image.outputs.IMAGE_NAME }}|g" kube/deploy.yml
+        kubectl apply -f kube/deploy.yml
+        kubectl apply -f kube/service.yml
         kubectl rollout status deployment/iris-classifier-deployment --timeout=300s
     
     - name: Generate CML Report
