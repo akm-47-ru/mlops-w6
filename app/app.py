@@ -24,12 +24,12 @@ except FileNotFoundError:
     raise RuntimeError(f"Model artifact not found at {PRE_TRAINED_MODEL_PATH}")
 
 
-@api.get("/", tags=["Status"])
+@app.get("/", tags=["Status"])
 def get_server_status():
     return {"status": "ok", "message": "Iris Classifier API is up and running."}
 
 
-@api.post("/predict", tags=["Predictions"])
+@app.post("/predict", tags=["Predictions"])
 def classify_iris_species(measurements: FlowerMeasurements):
     input_features = measurements.dict()
     input_dataframe = pd.DataFrame([input_features])
