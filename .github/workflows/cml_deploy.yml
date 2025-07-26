@@ -5,10 +5,9 @@ on:
     branches: [ main ]
 
 permissions:
-  contents: 'read'      
-  id-token: 'write'     
-  issues: 'write'        
-  pull-requests: 'write'
+  contents: write
+  pull-requests: write
+  issues: write
 
 env:
   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -21,8 +20,10 @@ jobs:
   Build-and-Deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: 'write'
-      id-token: 'write'
+      contents: 'write'       
+      id-token: 'write'     
+      issues: 'write'        
+      pull-requests: 'write'
 
     
     steps:
