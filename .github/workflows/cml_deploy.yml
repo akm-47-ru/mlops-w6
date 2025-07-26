@@ -1,4 +1,4 @@
-name: ML Pipeline CI/CD
+name: FastAPI CI/CD Pipeline
 
 on:
   pull_request:
