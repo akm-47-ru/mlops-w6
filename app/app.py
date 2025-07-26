@@ -4,46 +4,42 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 # Create the FastAPI app object
-app = FastAPI()
+app = FastAPI(
+    title="Iris Species Prediction API",
+    description="A simple API to classify Iris flower species based on their measurements.",
+    version="1.0.0",
+)
 
-# Define the input data schema using Pydantic
-class IrisInput(BaseModel):
+class FlowerMeasurements(BaseModel):
     sepal_length: float
     sepal_width: float
     petal_length: float
     petal_width: float
 
-# The path to the model artifact inside the Docker container
-MODEL_PATH = "artifacts/model.joblib"
+PRE_TRAINED_MODEL_PATH = "artifacts/model.joblib"
 
-# Load the trained model when the app starts
-model = joblib.load(MODEL_PATH)
+try:
+    classifier = joblib.load(PRE_TRAINED_MODEL_PATH)
+except FileNotFoundError:
+    raise RuntimeError(f"Model artifact not found at {PRE_TRAINED_MODEL_PATH}")
 
-@app.get("/")
-def read_root():
-    return {"message": "Iris Classifier API (Simple) is running!"}
 
-@app.post("/predict")
-def predict_species(iris_input: IrisInput):
-    """
-    Takes Iris features as input and returns the predicted species name directly.
-    """
-    # Convert input data to a pandas DataFrame
-    input_data = pd.DataFrame([iris_input.dict()])
-    
-    # Make a prediction. The model now directly outputs the species name.
-    prediction = model.predict(input_data)[0]
-    
-    # Get the probabilities for each class
-    probabilities = model.predict_proba(input_data)[0]
-    
-    # Get the class names from the model
-    class_names = model.classes_
-    
-    # Create a dictionary of class probabilities
-    confidence_scores = {class_names[i]: float(probabilities[i]) for i in range(len(class_names))}
-    
+@app.get("/", tags=["Status"])
+def get_server_status():
+    return {"status": "ok", "message": "Iris Classifier API is up and running."}
+
+
+@app.post("/predict", tags=["Predictions"])
+def classify_iris_species(measurements: FlowerMeasurements):
+    input_features = measurements.dict()
+    input_dataframe = pd.DataFrame([input_features])
+    predicted_class = classifier.predict(input_dataframe)[0]
+    prediction_probabilities = classifier.predict_proba(input_dataframe)[0]
+    confidence_mapping = {
+        species: float(probability)
+        for species, probability in zip(classifier.classes_, prediction_probabilities)
+    }
     return {
-        "predicted_species": prediction,
-        "confidence_scores": confidence_scores
+        "prediction_result": {"species_name": predicted_class},
+        "confidence": confidence_mapping,
     }

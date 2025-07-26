@@ -3,10 +3,10 @@ kind: Service
 metadata:
   name: iris-classifier-service
 spec:
-  type: LoadBalancer # Exposes the service externally using a cloud provider's load balancer
+  type: LoadBalancer 
   selector:
     app: iris-classifier
   ports:
   - protocol: TCP
-    port: 80       # The port the service is exposed on
-    targetPort: 8000 # The port the container is listening on
+    port: 80      
+    targetPort: 8000 

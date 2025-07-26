@@ -2,66 +2,59 @@ import os
 import subprocess
 import pytest
 
-MODEL_PATH = "artifacts/model.joblib"
-METRICS_PATH = "metrics.txt"
-DATA_PATH = "data/iris.csv"
+MODEL_ARTIFACT_LOCATION = "artifacts/model.joblib"
+EVALUATION_FILE_LOCATION = "metrics.txt"
+RAW_DATASET_LOCATION = "data/iris.csv"
+
 
 @pytest.fixture(scope="module")
-def pipeline_run():
-    """
-    A fixture to run the entire train.py script before tests.
-    It also handles cleaning up the artifacts after the tests are done.
-    
-    'scope="module"' means this will only run ONCE for all tests in this file.
-    """
-
-    result = subprocess.run(
-        ["python", "train.py"], 
-        capture_output=True, 
-        text=True,
-        check=True
+def execute_training_pipeline():
+    process_result = subprocess.run(
+        ["python", "train.py"], capture_output=True, text=True, check=True
     )
-    
+
     yield
-    
-    print("\nCleaning up generated artifacts...")
-    if os.path.exists(MODEL_PATH):
-        os.remove(MODEL_PATH)
-    if os.path.exists(METRICS_PATH):
-        os.remove(METRICS_PATH)
+
+    print("\nExecuting post-test cleanup of artifacts...")
+    if os.path.exists(MODEL_ARTIFACT_LOCATION):
+        os.remove(MODEL_ARTIFACT_LOCATION)
+    if os.path.exists(EVALUATION_FILE_LOCATION):
+        os.remove(EVALUATION_FILE_LOCATION)
 
 
-# --- Test 1: Data Validation Test ---
-def test_source_data_exists():
-    """A simple check to ensure the input data is where we expect it to be."""
-    assert os.path.exists(DATA_PATH), f"Input data not found at {DATA_PATH}"
+def verify_dataset_is_present():
+    assert os.path.exists(
+        RAW_DATASET_LOCATION
+    ), f"Dataset file is missing from path: {RAW_DATASET_LOCATION}"
 
 
-# --- Test 2: Evaluation Test (Artifact Creation) ---
-def test_artifacts_are_created(pipeline_run):
-    """
-    Checks if the script successfully created the model and metrics files.
-    """
-    assert os.path.exists(MODEL_PATH), "Model file was not created by train.py"
-    assert os.path.exists(METRICS_PATH), "Metrics file was not created by train.py"
+def check_for_pipeline_output_files(execute_training_pipeline):
+    assert os.path.exists(
+        MODEL_ARTIFACT_LOCATION
+    ), "Training script failed to generate the model artifact."
+    assert os.path.exists(
+        EVALUATION_FILE_LOCATION
+    ), "Training script failed to generate the evaluation file."
 
 
-# --- Test 3: Evaluation Test (Model Performance) ---
-def test_model_performance(pipeline_run):
-    """
-    Reads the generated metrics file and checks if the accuracy meets 
-    our minimum standard.
-    """
-    assert os.path.exists(METRICS_PATH), "Metrics file must exist to check performance."
-    
+def validate_model_accuracy_threshold(execute_training_pipeline):
+    assert os.path.exists(
+        EVALUATION_FILE_LOCATION
+    ), "Evaluation file is required for performance validation."
+
     try:
-        with open(METRICS_PATH, "r") as f:
-            content = f.read()
-        
-        accuracy_value = float(content.split(":")[1].strip())
-        print(f"Found accuracy: {accuracy_value}")
-        
-        assert accuracy_value > 0.85, f"Model accuracy {accuracy_value} is below the 0.85 threshold."
+        with open(EVALUATION_FILE_LOCATION, "r") as f:
+            file_contents = f.read()
+
+        parsed_accuracy = float(file_contents.split(":")[1].strip())
+        print(f"Retrieved model accuracy: {parsed_accuracy}")
+
+        assert (
+            parsed_accuracy > 0.85
+        ), f"Model performance {parsed_accuracy} did not meet the minimum standard of 0.85."
 
     except (ValueError, IndexError):
-        pytest.fail(f"Could not parse accuracy from metrics.txt. Check its format. Content was: '{content}'")
+        pytest.fail(
+            f"Failed to extract accuracy score from evaluation file. "
+            f"Please check file format. Contents: '{file_contents}'"
+        )

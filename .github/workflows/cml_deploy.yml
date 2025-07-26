@@ -1,4 +1,4 @@
-name: ML Pipeline CI/CD
+name: FastAPI CI/CD Pipeline
 
 on:
   pull_request:
@@ -96,7 +96,11 @@ jobs:
         # Generate report
         echo "🚀 Deployment to dev successful!" > report.md
         echo "✅ Model API is available at: http://$SERVICE_IP" >> report.md
-        echo "### Example Usage:" >> report.md
+        echo "### Example Usage for Get Request:" >> report.md
+        echo "\`\`\`bash" >> report.md
+        echo "curl -X 'GET' 'http://$SERVICE_IP/' \\" >> report.md
+        echo "\`\`\`" >> report.md
+        echo "### Example Usage for Post Request:" >> report.md
         echo "\`\`\`bash" >> report.md
         echo "curl -X 'POST' 'http://$SERVICE_IP/predict' \\" >> report.md
         echo "  -H 'accept: application/json' -H 'Content-Type: application/json' \\" >> report.md
